@@ -1,0 +1,21 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+mamba = "*"
+expects = "*"
+isort = "*"
+add-trailing-comma = "*"
+pyformat = "*"
+flake8 = "*"
+wemake-python-styleguide = "*"
+
+[packages]
+google-api-python-client = "*"
+google-auth-oauthlib = "*"
+google-auth = "*"
+
+[requires]
+python_version = "3.8"
