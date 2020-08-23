@@ -3,10 +3,11 @@ import logging
 from src.client import PeopleClient
 from src.consts import ALL_PERSON_FIELDS
 from src.credentials import Credentials
-from src.utils import should_update_mx_phone_number, clean_phone_number
+from src.utils import clean_phone_number, should_update_mx_phone_number
 
-logger = logging.getLogger("clean_script")
-logger.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("update_contacts")
+logger.setLevel(level=logging.INFO)
 
 credentials = Credentials().get_credentials()
 client = PeopleClient(credentials=credentials)
@@ -34,8 +35,11 @@ for group_member in group_members:
     etag = contact['etag']
     names = contact['names']
     phone_numbers = contact['phoneNumbers']
-    logging.info(
-        'People: {name}'.format(name=names[0]['displayName']),
+    name = names[0]['displayName'] if names[0] else ''
+    logger.info(
+        'People: {name}'.format(
+            name=name,
+        ),
     )
     should_update = False
     for index, phone_number_object in enumerate(phone_numbers):
@@ -47,11 +51,9 @@ for group_member in group_members:
             ),
         )
         logger.info(
-            'Should update this number: {phone_number} result {should_update}'.format(
+            'Should update number: {phone_number} result {should_update}'.format(
                 phone_number=phone_number,
-                should_update=should_update_mx_phone_number(phone_number)
-            )
+                should_update=should_update_mx_phone_number(phone_number),
+            ),
         )
     print('\n')
-
-

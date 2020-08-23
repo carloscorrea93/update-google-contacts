@@ -1,7 +1,7 @@
-from expects import expect, equal
+from expects import equal, expect
 from mamba import description, it
-from src.utils import should_update_mx_phone_number
 
+from src.utils import should_update_mx_phone_number
 
 with description(should_update_mx_phone_number) as self:
 

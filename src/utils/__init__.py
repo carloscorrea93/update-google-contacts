@@ -1,2 +1,2 @@
-from src.utils.should_update_mx_phone_number import should_update_mx_phone_number
 from src.utils.clean_phone_number import clean_phone_number
+from src.utils.should_update_mx_phone_number import should_update_mx_phone_number
