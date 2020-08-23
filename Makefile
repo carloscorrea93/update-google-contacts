@@ -11,3 +11,6 @@ format:
 
 lint:
 	flake8 $(path)
+
+run:
+	pipenv run python -m src.main
