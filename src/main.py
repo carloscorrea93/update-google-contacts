@@ -1,26 +1,57 @@
 import logging
 
 from src.client import PeopleClient
+from src.consts import ALL_PERSON_FIELDS
 from src.credentials import Credentials
+from src.utils import should_update_mx_phone_number, clean_phone_number
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("clean_script")
+logger.setLevel(logging.INFO)
 
-
-def main():
-    credentials = Credentials().get_credentials()
-    client = PeopleClient(credentials=credentials)
-    contacts_response = client.get_all_contact_group()
-    logging.info(
-        'resourceName: {resource_name}'.format(
-            resource_name=contacts_response['resourceName'],
-        ),
+credentials = Credentials().get_credentials()
+client = PeopleClient(credentials=credentials)
+contacts_response = client.contact_group_get(max_members=10)
+group_members = contacts_response['memberResourceNames']
+logger.info(
+    'resourceName: {resource_name}'.format(
+        resource_name=contacts_response['resourceName'],
+    ),
+)
+logger.info(
+    'memberCount: {member_count}'.format(
+        member_count=contacts_response.get('memberCount', 0),
+    ),
+)
+print('\n')
+for group_member in group_members:
+    contact = client.people_get(
+        resource_name=group_member,
+        person_fields=[
+            ALL_PERSON_FIELDS.get('NAMES'),
+            ALL_PERSON_FIELDS.get('PHONE_NUMBERS'),
+        ],
     )
+    etag = contact['etag']
+    names = contact['names']
+    phone_numbers = contact['phoneNumbers']
     logging.info(
-        'memberCount: {member_count}'.format(
-            member_count=contacts_response['memberCount'],
-        ),
+        'People: {name}'.format(name=names[0]['displayName']),
     )
+    should_update = False
+    for index, phone_number_object in enumerate(phone_numbers):
+        phone_number = clean_phone_number(phone_number_object['value'])
+        logger.info(
+            'phone number #{index}: {phone_number}'.format(
+                index=index+1,
+                phone_number=phone_number,
+            ),
+        )
+        logger.info(
+            'Should update this number: {phone_number} result {should_update}'.format(
+                phone_number=phone_number,
+                should_update=should_update_mx_phone_number(phone_number)
+            )
+        )
+    print('\n')
 
 
-if __name__ == '__main__':
-    main()
