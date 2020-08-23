@@ -36,7 +36,7 @@ class Credentials(object):
 
     def generate_credentials_from_local_server(self):
         credentials = self.flow.run_local_server(open_browser=True)
-        file = open(self.CREDENTIALS_FILE, 'w')
+        file = open(self.CREDENTIALS_FILE, 'w+')
         file.write(credentials.to_json())
         file.close()
         return credentials
