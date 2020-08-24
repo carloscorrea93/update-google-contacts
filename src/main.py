@@ -37,23 +37,20 @@ for group_member in group_members:
     phone_numbers = contact['phoneNumbers']
     name = names[0]['displayName'] if names[0] else ''
     logger.info(
-        'People: {name}'.format(
+        'Name: {name}'.format(
             name=name,
         ),
     )
     should_update = False
     for index, phone_number_object in enumerate(phone_numbers):
         phone_number = clean_phone_number(phone_number_object['value'])
+        should_update = should_update_mx_phone_number(phone_number)
         logger.info(
-            'phone number #{index}: {phone_number}'.format(
+            '#{index} "{type}": {phone_number} -> update: {should_update}'.format(
                 index=index+1,
                 phone_number=phone_number,
-            ),
-        )
-        logger.info(
-            'Should update number: {phone_number} result {should_update}'.format(
-                phone_number=phone_number,
-                should_update=should_update_mx_phone_number(phone_number),
+                type=phone_number_object.get('type', ''),
+                should_update=should_update,
             ),
         )
     print('\n')
