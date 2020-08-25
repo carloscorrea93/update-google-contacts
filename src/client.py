@@ -35,6 +35,13 @@ class PeopleClient(object):
             ),
         )
 
+    def people_delete(self, resource_name):
+        return self._execute(
+            self.client.people().deleteContact(
+                resourceName=resource_name,
+            ),
+        )
+
     def _execute(self, request):
         try:
             return request.execute()
