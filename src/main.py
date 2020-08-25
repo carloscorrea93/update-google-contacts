@@ -1,3 +1,4 @@
+import argparse
 import logging
 
 from src.client import PeopleClient
@@ -6,51 +7,102 @@ from src.credentials import Credentials
 from src.utils import clean_phone_number, should_update_mx_phone_number
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("update_contacts")
-logger.setLevel(level=logging.INFO)
 
-credentials = Credentials().get_credentials()
-client = PeopleClient(credentials=credentials)
-contacts_response = client.contact_group_get(max_members=10)
-group_members = contacts_response['memberResourceNames']
-logger.info(
-    'resourceName: {resource_name}'.format(
-        resource_name=contacts_response['resourceName'],
-    ),
-)
-logger.info(
-    'memberCount: {member_count}'.format(
-        member_count=contacts_response.get('memberCount', 0),
-    ),
-)
-print('\n')
-for group_member in group_members:
-    contact = client.people_get(
-        resource_name=group_member,
-        person_fields=[
-            ALL_PERSON_FIELDS.get('NAMES'),
-            ALL_PERSON_FIELDS.get('PHONE_NUMBERS'),
-        ],
-    )
-    etag = contact['etag']
-    names = contact['names']
-    phone_numbers = contact['phoneNumbers']
-    name = names[0]['displayName'] if names[0] else ''
-    logger.info(
-        'Name: {name}'.format(
-            name=name,
-        ),
-    )
-    should_update = False
-    for index, phone_number_object in enumerate(phone_numbers):
-        phone_number = clean_phone_number(phone_number_object['value'])
-        should_update = should_update_mx_phone_number(phone_number)
-        logger.info(
-            '#{index} "{type}": {phone_number} -> update: {should_update}'.format(
-                index=index+1,
-                phone_number=phone_number,
-                type=phone_number_object.get('type', ''),
-                should_update=should_update,
+
+class RunScript(object):
+    def __init__(self):
+        credentials = Credentials().get_credentials()
+        self.logger = logging.getLogger('update_contacts')
+        self.logger.setLevel(level=logging.INFO)
+        self.client = PeopleClient(credentials=credentials)
+
+    def main(self):
+        enable_delete = self.parse_arguments()
+        contacts_response = self.client.contact_group_get(max_members=10)
+        group_members = contacts_response['memberResourceNames']
+        self.logger.info(
+            'resourceName: {resource_name}'.format(
+                resource_name=contacts_response['resourceName'],
             ),
         )
-    print('\n')
+        self.logger.info(
+            'memberCount: {member_count}'.format(
+                member_count=contacts_response.get('memberCount', 0),
+            ),
+        )
+        print('\n')
+        for resource_name in group_members:
+            contact = self.get_people(resource_name)
+            etag, phone_numbers, name = self.parse_contact(contact)
+            self.logger.info(
+                'Name: {name}'.format(
+                    name=name,
+                ),
+            )
+            self.process_phones(phone_numbers)
+            if enable_delete:
+                if self.delete_contact_question(name):
+                    self.process_delete(resource_name)
+            print('\n')
+
+    def parse_arguments(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            '--enable-delete',
+            help='enable delete option',
+            action='store_true',
+        )
+        args = parser.parse_args()
+        enable_delete = args.enable_delete
+        return enable_delete
+
+    def get_people(self, resource_name):
+        return self.client.people_get(
+            resource_name=resource_name,
+            person_fields=[
+                ALL_PERSON_FIELDS.get('NAMES'),
+                ALL_PERSON_FIELDS.get('PHONE_NUMBERS'),
+            ],
+        )
+
+    def parse_contact(self, contact):
+        etag = contact['etag']
+        names = contact['names']
+        phone_numbers = contact['phoneNumbers']
+        name = names[0]['displayName'] if names[0] else ''
+        return etag, phone_numbers, name
+
+    def process_phones(self, phone_numbers):
+        for index, phone_number_object in enumerate(phone_numbers):
+            phone_number = clean_phone_number(phone_number_object['value'])
+            should_update = should_update_mx_phone_number(phone_number)
+            self.logger.info(
+                '#{index} "{type}": {phone_number} -> update: {should_update}'.format(
+                    index=index + 1,
+                    phone_number=phone_number,
+                    type=phone_number_object.get('type', ''),
+                    should_update=should_update,
+                ),
+            )
+
+    def process_delete(self, resource_name):
+        self.client.people_delete(resource_name=resource_name)
+
+    def delete_contact_question(self, name):
+        check = str(
+            input("Delete this contact '{name}' ? (Y/N): ".format(name=name)),
+        ).lower().strip()
+        try:
+            if check[0] == 'y':
+                return True
+            elif check[0] == 'n':
+                return False
+            else:
+                return self.delete_contact_question(name)
+        except Exception as e:
+            self.logger.error(e)
+            return self.delete_contact_question(name)
+
+
+if __name__ == '__main__':
+    RunScript().main()
