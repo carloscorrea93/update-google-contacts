@@ -42,6 +42,17 @@ class PeopleClient(object):
             ),
         )
 
+    def people_update(self, resource_name, body, person_fields=None):
+        if not person_fields:
+            person_fields = list(ALL_PERSON_FIELDS.values())
+        return self._execute(
+            self.client.people().updateContact(
+                resourceName=resource_name,
+                body=body,
+                updatePersonFields=','.join(person_fields),
+            ),
+        )
+
     def _execute(self, request):
         try:
             return request.execute()

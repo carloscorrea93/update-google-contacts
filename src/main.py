@@ -4,7 +4,11 @@ import logging
 from src.client import PeopleClient
 from src.consts import ALL_PERSON_FIELDS
 from src.credentials import Credentials
-from src.utils import clean_phone_number, should_update_mx_phone_number
+from src.utils import (
+    clean_mx_with_regex,
+    clean_phone_number,
+    should_update_mx_phone_number,
+)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,7 +22,7 @@ class RunScript(object):
 
     def main(self):
         enable_delete = self.parse_arguments()
-        contacts_response = self.client.contact_group_get(max_members=10)
+        contacts_response = self.client.contact_group_get(max_members=200)
         group_members = contacts_response['memberResourceNames']
         self.logger.info(
             'resourceName: {resource_name}'.format(
@@ -48,7 +52,11 @@ class RunScript(object):
                 should_update = self.process_phones(phone_numbers)
                 if should_update:
                     if self.process_contact_question(name):
-                        self.process_update(resource_name, phone_numbers)
+                        self.process_update(
+                            contact,
+                            resource_name,
+                            phone_numbers,
+                        )
             print('\n')
 
     def parse_arguments(self):
@@ -74,7 +82,7 @@ class RunScript(object):
     def parse_contact(self, contact):
         etag = contact['etag']
         names = contact['names']
-        phone_numbers = contact['phoneNumbers']
+        phone_numbers = contact.get('phoneNumbers', [])
         name = names[0]['displayName'] if names[0] else ''
         return etag, phone_numbers, name
 
@@ -95,7 +103,7 @@ class RunScript(object):
         return should_update
 
     def process_delete(self, resource_name):
-        self.client.people_delete(resource_name=resource_name)
+        self.client.people_delete(resource_name)
 
     def delete_contact_question(self, name):
         check = str(
@@ -114,7 +122,11 @@ class RunScript(object):
 
     def process_contact_question(self, name):
         check = str(
-            input("Update this contact number '{name}' ? (Y/N): ".format(name=name)),
+            input(
+                "Update this contact number '{name}' ? (Y/N): ".format(
+                    name=name,
+                ),
+            ),
         ).lower().strip()
         try:
             if check[0] == 'y':
@@ -127,8 +139,31 @@ class RunScript(object):
             self.logger.error(e)
             return self.process_contact_question(name)
 
-    def process_update(self, resource_name, phone_numbers):
-        pass
+    def process_update(self, contact, resource_name, phone_numbers):
+        body = self.create_update_body(contact)
+        body['phoneNumbers'] = self.update_phone_numbers(phone_numbers)
+        self.client.people_update(
+            resource_name,
+            body,
+            person_fields=[
+                ALL_PERSON_FIELDS.get('PHONE_NUMBERS'),
+            ],
+        )
+
+    def create_update_body(self, body):
+        body.pop('resourceName')
+        body.pop('names')
+        return body
+
+    def update_phone_numbers(self, phone_numbers):
+        for phone_number_object in phone_numbers:
+            phone_number = clean_phone_number(phone_number_object['value'])
+            if should_update_mx_phone_number(phone_number):
+                phone_number_object['value'] = clean_mx_with_regex(
+                    phone_number
+                )
+        return phone_numbers
+
 
 if __name__ == '__main__':
     RunScript().main()
