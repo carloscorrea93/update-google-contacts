@@ -1,5 +1,6 @@
 import argparse
 import logging
+import time
 
 from src.client import PeopleClient
 from src.consts import ALL_PERSON_FIELDS
@@ -35,11 +36,14 @@ class RunScript(object):
             ),
         )
         print('\n')
-        for resource_name in group_members:
+        offset = 0
+        for index, resource_name in enumerate(group_members[offset]):
+            time.sleep(2)
             contact = self.get_people(resource_name)
             etag, phone_numbers, name = self.parse_contact(contact)
             self.logger.info(
-                'Name: {name}'.format(
+                '#index:{index} Name: {name}'.format(
+                    index=index + offset + 1,
                     name=name,
                 ),
             )
@@ -160,7 +164,7 @@ class RunScript(object):
             phone_number = clean_phone_number(phone_number_object['value'])
             if should_update_mx_phone_number(phone_number):
                 phone_number_object['value'] = clean_mx_with_regex(
-                    phone_number
+                    phone_number,
                 )
         return phone_numbers
 
