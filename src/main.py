@@ -39,10 +39,16 @@ class RunScript(object):
                     name=name,
                 ),
             )
-            self.process_phones(phone_numbers)
+            delete_contact = False
             if enable_delete:
                 if self.delete_contact_question(name):
+                    delete_contact = True
                     self.process_delete(resource_name)
+            if not delete_contact:
+                should_update = self.process_phones(phone_numbers)
+                if should_update:
+                    if self.process_contact_question(name):
+                        self.process_update(resource_name, phone_numbers)
             print('\n')
 
     def parse_arguments(self):
@@ -73,17 +79,20 @@ class RunScript(object):
         return etag, phone_numbers, name
 
     def process_phones(self, phone_numbers):
+        should_update = False
         for index, phone_number_object in enumerate(phone_numbers):
             phone_number = clean_phone_number(phone_number_object['value'])
             should_update = should_update_mx_phone_number(phone_number)
+            if should_update:
+                should_update = True
             self.logger.info(
-                '#{index} "{type}": {phone_number} -> update: {should_update}'.format(
+                '#{index} "{type}": {phone_number}'.format(
                     index=index + 1,
                     phone_number=phone_number,
                     type=phone_number_object.get('type', ''),
-                    should_update=should_update,
                 ),
             )
+        return should_update
 
     def process_delete(self, resource_name):
         self.client.people_delete(resource_name=resource_name)
@@ -103,6 +112,23 @@ class RunScript(object):
             self.logger.error(e)
             return self.delete_contact_question(name)
 
+    def process_contact_question(self, name):
+        check = str(
+            input("Update this contact number '{name}' ? (Y/N): ".format(name=name)),
+        ).lower().strip()
+        try:
+            if check[0] == 'y':
+                return True
+            elif check[0] == 'n':
+                return False
+            else:
+                return self.process_contact_question(name)
+        except Exception as e:
+            self.logger.error(e)
+            return self.process_contact_question(name)
+
+    def process_update(self, resource_name, phone_numbers):
+        pass
 
 if __name__ == '__main__':
     RunScript().main()
